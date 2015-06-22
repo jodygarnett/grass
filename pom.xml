@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!-- 
+ Copyright (C) 2014 Boundless
+ This code is licensed under the GPL 2.0 license, available at the root
+ application directory.
+ -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.geoserver</groupId>
+  <artifactId>gs-grass</artifactId>
+  <packaging>jar</packaging>
+  <version>1.0</version>
+  <name>Grass Process Module</name>
+  <description>
+    Grass process module serving as a proof of concept using the r.viewshed process
+  </description>
+
+   <properties>
+     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+     <gt.version>13-SNAPSHOT</gt.version>
+     <gs.version>2.7-SNAPSHOT</gs.version>
+   </properties>
+   
+  <dependencies>
+     <dependency>
+       <groupId>org.geotools</groupId>
+       <artifactId>gt-process</artifactId>
+       <version>${gt.version}</version>
+     </dependency>
+     <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-exec</artifactId>
+        <version>1.3</version>
+     </dependency>
+     <dependency>
+       <groupId>org.geoserver.extension</groupId>
+       <artifactId>gs-wps-core</artifactId>
+       <version>${gs.version}</version>
+     </dependency>
+     <dependency>
+       <groupId>org.geoserver</groupId>
+       <artifactId>gs-main</artifactId>
+       <version>${gs.version}</version>
+     </dependency>
+     <dependency>
+       <groupId>org.geoserver</groupId>
+       <artifactId>gs-main</artifactId>
+       <version>${gs.version}</version>
+       <classifier>tests</classifier>
+       <scope>test</scope>
+     </dependency>
+     <dependency>
+       <groupId>junit</groupId>
+       <artifactId>junit</artifactId>
+       <version>4.11</version>
+       <scope>test</scope>
+     </dependency>
+     <dependency>
+       <groupId>com.mockrunner</groupId>
+       <artifactId>mockrunner</artifactId>
+       <version>0.3.6</version>
+      <scope>test</scope>
+     </dependency>
+  </dependencies>
+
+  <repositories>
+      <repository>
+          <id>maven2-repository.dev.java.net</id>
+          <name>Java.net repository</name>
+          <url>http://download.java.net/maven/2</url>
+      </repository>
+      <repository>
+          <id>osgeo</id>
+          <name>Open Source Geospatial Foundation Repository</name>
+          <url>http://download.osgeo.org/webdav/geotools/</url>
+      </repository>
+      <repository>
+        <snapshots>
+          <enabled>true</enabled>
+        </snapshots>
+        <id>boundless</id>
+        <name>Boundless Maven Repository</name>
+        <url>http://repo.boundlessgeo.com/main</url>
+      </repository>
+  </repositories>
+
+</project>
