@@ -31,7 +31,7 @@ An alternative is to edit the web.xml file as outlined in the [OpenGeoSuite 4.6.
    ```
    <context-param>
       <param-name>GRASS</param-name>
-      <!-- directory where GRASS lives -->
+      <!-- GRASS executable -->
       <param-value>/Applications/GRASS-7.0.app/Contents/MacOS/grass70</param-value>
    </context-param>
    ```
@@ -61,7 +61,7 @@ To use this module:
    
 4. This module includes dummy process double check the expected grass environment:
 
-   ![demo grass:version](/img/grass_version.png)
+   ![demo grass:version](/grass_version.png)
    
    When executed this process will return the GRASS version information.
    
