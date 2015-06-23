@@ -48,14 +48,14 @@ public class GrassProcessTest {
 		}
 	}
 
-	@Ignore
+	@Test
 	public void testVersion() {
 		String version = GrassProcesses.version();
 		System.out.println(version);
 		assertTrue(version.contains("7.0.0"));
 	}
 	
-	@Test
+	@Ignore
 	public void testDEM() throws Exception {
 		assertNotNull(sfdem);
 		

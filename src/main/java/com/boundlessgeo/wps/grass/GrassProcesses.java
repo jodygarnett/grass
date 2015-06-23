@@ -7,7 +7,10 @@ package com.boundlessgeo.wps.grass;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
@@ -22,11 +25,9 @@ import org.geotools.process.factory.DescribeParameter;
 import org.geotools.process.factory.DescribeProcess;
 import org.geotools.process.factory.DescribeResult;
 import org.geotools.process.factory.StaticMethodsProcessFactory;
-import org.geotools.referencing.CRS;
 import org.geotools.text.Text;
 import org.geotools.util.KVP;
 import org.opengis.coverage.grid.GridCoverageWriter;
-import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> {
 
@@ -82,36 +83,68 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
             @DescribeParameter(name = "x", description = "x location in map units") double x,
             @DescribeParameter(name = "y", description = "y location in map units") double y) throws Exception{
 		
-		String location[] = location( "viewshed", dem );
+		File init[] = location( "viewshed", dem );
 		
-		CommandLine cmd = new CommandLine(EXEC);
-		cmd.addArgument("r.viewshed");
-		cmd.addArgument("-c");
-		
-		return null;
-	}
-	
-	static String[] location( String operation, GridCoverage2D dem ) throws Exception {
-		CoordinateReferenceSystem crs = dem.getCoordinateReferenceSystem();
-		String code = CRS.toSRS(crs, true);
-		
-		File geodb = Files.createTempDirectory("geodb").toFile();
-		File location = new File(geodb,"location");
-		File file = new File( location, "dem.tiff");
-		String mapset = "PERMANENT";		
+		File geodb = init[0];
+		File location = init[1];
+		File file = init[2];
 		KVP kvp = new KVP(
 				"geodb",geodb,
 				"location",location,
 				"file",file);
 		
+		CommandLine cmd = new CommandLine(EXEC);
+		cmd.addArgument("r.viewshed");
+		cmd.addArgument("-c");
+		
+		
+		cmd = new CommandLine(EXEC);
+		cmd.addArgument("r.viewport");
+		cmd.addArgument("--overwrite");
+		cmd.addArgument("--verbose");
+		cmd.addArgument("input="+file.getName());
+		cmd.addArgument("output=viewshed.tiff");
+		cmd.addArgument("coordinates="+x+","+y);
+	
+		cmd.addArgument("${location}");
+		cmd.setSubstitutionMap(kvp);
+	
+		DefaultExecutor executor = new DefaultExecutor();
+		executor.setExitValue(0);
+		executor.setWatchdog(new ExecuteWatchdog(60000));		
+		executor.setStreamHandler(new PumpStreamHandler(System.out));
+		
+		executor.setWorkingDirectory(location);
+		int exitValue = executor.execute(cmd);
+		
+		System.out.println("GRASS Enviornment:"+location);
+		
+		return null;
+	}
+	
+	static File[] location( String operation, GridCoverage2D dem ) throws Exception {
+		
+		File geodb = new File(System.getProperty("user.home"),"grassdata");		
+		File location = Files.createTempDirectory(geodb.toPath(),operation).toFile();
+		location.delete();
+		File file = new File( geodb, "dem.tiff");
+		String mapset = "PERMANENT";		
+		KVP kvp = new KVP(
+				"geodb",geodb,
+				"location",location,
+				"file",file);
+		/*
 		// grass70 + ' -c epsg:' + myepsg + ' -e ' + location_path
+		CoordinateReferenceSystem crs = dem.getCoordinateReferenceSystem();
+		String code = CRS.toSRS(crs, true);
+		
 		CommandLine cmd = new CommandLine(EXEC);
 		cmd.addArgument("-c");
 		cmd.addArgument("epsg:"+code);
 		cmd.addArgument("-e");
 		cmd.addArgument("${location}");
 		cmd.setSubstitutionMap(kvp);
-		
+
 		DefaultExecutor executor = new DefaultExecutor();
 		executor.setExitValue(0);
 		ExecuteWatchdog watchdog = new ExecuteWatchdog(60000);
@@ -119,14 +152,34 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 		
 		executor.setStreamHandler(new PumpStreamHandler(System.out));
 		int exitValue = executor.execute(cmd);
-
-		//
+		*/
+		
 		final GeoTiffFormat format = new GeoTiffFormat();
 		GridCoverageWriter writer = format.getWriter(file);
 		writer.write(dem, null);
+		System.out.println("Staging file:"+file);
 		
-		System.out.println(file);
+		// grass70 + ' -c ' + myfile + ' -e ' + location_path
+		CommandLine cmd = new CommandLine(EXEC);
+		cmd.addArgument("-c");
+		cmd.addArgument("${file}");
+		cmd.addArgument("-e");
+		cmd.addArgument("${location}");
+		cmd.setSubstitutionMap(kvp);
 		
-		return new String[]{geodb.toString(),location.toString(),mapset};
+		DefaultExecutor executor = new DefaultExecutor();
+		executor.setExitValue(0);
+		ExecuteWatchdog watchdog = new ExecuteWatchdog(60000);
+		executor.setWatchdog(watchdog);		
+		executor.setStreamHandler(new PumpStreamHandler(System.out));
+		int exitValue = executor.execute(cmd);
+
+		System.out.println("GRASS Enviornment:"+location);
+		
+		File origional = file;
+		file = new File(location, file.getName());
+		Files.move(origional.toPath(),  file.toPath() );
+		
+		return new File[]{geodb,location,file};
 	}
 }

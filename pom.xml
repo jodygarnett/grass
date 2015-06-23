@@ -12,7 +12,7 @@
   <groupId>org.geoserver</groupId>
   <artifactId>gs-grass</artifactId>
   <packaging>jar</packaging>
-  <version>1.0</version>
+  <version>0.4</version>
   <name>Grass Process Module</name>
   <description>
     Grass process module serving as a proof of concept using the r.viewshed process
