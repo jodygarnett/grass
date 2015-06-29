@@ -12,7 +12,7 @@
   <groupId>org.geoserver</groupId>
   <artifactId>gs-grass</artifactId>
   <packaging>jar</packaging>
-  <version>0.4</version>
+  <version>0.6</version>
   <name>Grass Process Module</name>
   <description>
     Grass process module serving as a proof of concept using the r.viewshed process
@@ -87,4 +87,31 @@
       </repository>
   </repositories>
 
+  <profiles>
+    <profile>
+      <id>lib</id>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <executions>
+              <execution>
+                <phase>install</phase>
+                <goals>
+                  <goal>copy-dependencies</goal>
+                </goals>
+                <configuration>
+                  <includeScope>runtime</includeScope>
+                  <excludeGroupIds>org.springframework.security,org.springframework</excludeGroupIds>
+                  <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                  
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+  
 </project>
