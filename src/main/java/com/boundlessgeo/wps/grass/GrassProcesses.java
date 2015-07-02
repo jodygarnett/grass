@@ -140,7 +140,7 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 	}
 	
 	@DescribeProcess(title = "r.viewshed", description = "Computes the viewshed of a point on an elevation raster map.")
-	@DescribeResult(name="viewshed",description="area visible from provided location")
+	@DescribeResult(description="area visible from provided location")
 	public static GridCoverage2D viewshed(
 			@DescribeParameter(name = "dem", description = "digitial elevation model")
 			GridCoverage2D dem,

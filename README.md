@@ -67,6 +67,20 @@ To use this module:
    
    Note: You can disable access to this process, after you have confirmed a working execution enviornment, using the wps security and access control. 
 
+## Use
+
+1. The process takes three parameters as shown:
+   
+   * digital elevation model: raster dem
+   * x: viewpoint location in map units
+   * y: viewpoint location in map units
+
+   ![demo grass:viewshed](/grass_viewshed.png)
+
+2. The resulting raster illustrates the visible area from the x & y location provided.
+   
+   ![viewshed preview](/viewshed_preview.png)
+
 ## Contact
 
 You may reach me at jgarnett@boundlessgeo.com or contact professional services.
