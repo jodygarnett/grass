@@ -55,7 +55,7 @@ public class GrassProcessTest {
 		assertTrue(version.contains("7.0.0"));
 	}
 	
-	@Ignore
+	@Test
 	public void testDEM() throws Exception {
 		assertNotNull(sfdem);
 		
