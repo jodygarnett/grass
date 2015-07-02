@@ -39,29 +39,48 @@ import org.opengis.feature.type.Name;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> {
+	enum Env { LINUX, MAC, WINDOWS, UNKNOWN }
+	
 	private static final Logger LOGGER = Logging.getLogger("org.geoserver.wps.grass");
 	static String EXEC;
-
+	final static Env SYSTEM;
+	static {
+		String system = System.getProperty("os.name").toLowerCase();
+		if (system.contains("nix") || system.contains("nux") || system.contains("aix")) {
+			SYSTEM = Env.LINUX;
+		}
+		else if (system.contains("mac")) {
+			SYSTEM = Env.MAC;
+		}
+		else if (system.contains("win")) {
+			SYSTEM = Env.WINDOWS;
+		}
+		else {
+			SYSTEM = Env.UNKNOWN;
+		}
+		
+	}
+	
 	public GrassProcesses() {
 		super(Text.text("Geographic Resources Analysis Support System"),
 				"grass", GrassProcesses.class);
-		String system = System.getProperty("os.name").toLowerCase();
+		
 		String grass = GeoServerExtensions.getProperty("GRASS");
 		if (grass != null) {
 			LOGGER.info("defined GRASS="+grass);
 			EXEC = grass;
-		} else if (system.contains("nix") || system.contains("nux") || system.contains("aix")) {
+		} else if (SYSTEM == Env.LINUX){
 			EXEC = "/usr/local/bin/grass70";
 			LOGGER.info("default GRASS="+EXEC);
-		} else if (system.contains("mac")) {
+		} else if (SYSTEM == Env.MAC){
 			EXEC = "/Applications/GRASS-7.0.app/Contents/MacOS/grass70";
 			LOGGER.info("default GRASS="+EXEC);
-		} else if (system.contains("win")) {
+		} else if(SYSTEM == Env.WINDOWS){
 			EXEC = "C:\\GRASS64\\GRASS70.exe";
 			LOGGER.info("default GRASS="+EXEC);
 		} else {
 			LOGGER.warning(
-				"GRASS default executable unavailable for '"+system+
+				"GRASS default executable unavailable for '"+System.getProperty("os.name")+
 				"'. Please use GRASS environmental variable, context parameter or system property"
 			);
 			EXEC = null;
@@ -130,12 +149,8 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 		File init[] = location( COMMAND, dem );
 		File geodb = init[0];
 		File location = init[1];
-		File file = init[2];
-		KVP kvp = new KVP(
-				"geodb",geodb,
-				"location",location,
-				"file",file);
-		LOGGER.info("GRASS Enviornment:"+location);
+		File mapset = init[2];
+		File file = init[3];		
 				
 		// see: http://grasswiki.osgeo.org/wiki/GRASS_and_Shell
 		Map<String,String> env = EnvironmentUtils.getProcEnvironment();
@@ -143,7 +158,10 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 		// GRASS ENV
 		File GISBASE = new File(EXEC).getParentFile();
 		String GRASS_VERSION = "7.0.0";
-		File GISRC = new File(System.getProperty("user.home"),".grassrc."+GRASS_VERSION+"."+COMMAND);
+		EnvironmentUtils.addVariableToEnvironment(env, "GISBASE="+GISBASE);
+		EnvironmentUtils.addVariableToEnvironment(env, "GRASS_VERSION="+GRASS_VERSION);
+		
+		File GISRC = new File(System.getProperty("user.home"),".grassrc."+GRASS_VERSION+"."+location.getName());
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(GISRC))) {
 			writer.write("GISDBASE: " + geodb);
 			writer.newLine();
@@ -154,55 +172,58 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 			writer.write("GRASS_GUI: text");
 			writer.newLine();
 		}
-		EnvironmentUtils.addVariableToEnvironment(env, "GISBASE="+GISBASE);
-		EnvironmentUtils.addVariableToEnvironment(env, "GRASS_VERSION="+GRASS_VERSION);
 		EnvironmentUtils.addVariableToEnvironment(env, "GISRC="+GISRC);
 
 		// SYSTEM ENV
 		String bin = new File(GISBASE,"bin").getAbsolutePath();
 		String scripts = new File(GISBASE,"scripts").getAbsolutePath();				
 		String lib = new File(GISBASE,"lib").getAbsolutePath();
-		if( env.containsKey("LD_LIBRARY_PATH") ){
-			String LD_LIBRARY_PATH = env.get("PATH")+pathSeparator+lib;
-			EnvironmentUtils.addVariableToEnvironment(env, "LD_LIBRARY_PATH="+LD_LIBRARY_PATH);
-			
-			String PATH = env.get("PATH")+pathSeparator+bin+pathSeparator+scripts;
-			EnvironmentUtils.addVariableToEnvironment(env, "PATH="+PATH);
-		}
-		else if (env.containsKey("DYLD_LIBRARY_PATH")){
-			String DYLD_LIBRARY_PATH = env.get("DYLD_LIBRARY_PATH")+pathSeparator+lib;
-			EnvironmentUtils.addVariableToEnvironment(env, "DYLD_LIBRARY_PATH="+DYLD_LIBRARY_PATH);
-			String PATH = env.get("PATH")+pathSeparator+bin+pathSeparator+scripts;
-			EnvironmentUtils.addVariableToEnvironment(env, "PATH="+PATH);
-		}
-		else {
-			String PATH = env.get("PATH")+pathSeparator+bin+pathSeparator+scripts+pathSeparator+lib;
-			EnvironmentUtils.addVariableToEnvironment(env, "PATH="+PATH);	
-		}
-		
+		if (SYSTEM == Env.WINDOWS) {
+			String PATH = env.get("PATH") + pathSeparator + bin + pathSeparator + scripts + pathSeparator + lib;
+			EnvironmentUtils.addVariableToEnvironment(env, "PATH=" + PATH);
+		} else {
+			String PATH = env.get("PATH") + pathSeparator + bin + pathSeparator + scripts;
+			EnvironmentUtils.addVariableToEnvironment(env, "PATH=" + PATH);
+			if (SYSTEM == Env.LINUX) {
+				String LD_LIBRARY_PATH = (env.containsKey("LD_LIBRARY_PATH")
+						? env.get("LD_LIBRARY_PATH") + pathSeparator : "") + lib;
+				EnvironmentUtils.addVariableToEnvironment(env, "LD_LIBRARY_PATH=" + LD_LIBRARY_PATH);
+			} else if (SYSTEM == Env.MAC) {
+				String DYLD_LIBRARY_PATH = (env.containsKey("DYLD_LIBRARY_PATH")
+						? env.get("DYLD_LIBRARY_PATH") + pathSeparator : "") + lib;
+				EnvironmentUtils.addVariableToEnvironment(env, "DYLD_LIBRARY_PATH=" + DYLD_LIBRARY_PATH);
+			}
+		}		
 		// EXECUTE COMMAND
-		CommandLine cmd = new CommandLine(EXEC);
-		cmd = new CommandLine(EXEC);
-		cmd.addArgument("r."+COMMAND);
-		cmd.addArgument("--overwrite");
-		cmd.addArgument("--verbose");
-		cmd.addArgument("input="+file.getName());
-		cmd.addArgument("output=viewshed.tiff");
-		cmd.addArgument("coordinates="+x+","+y);	
-		cmd.addArgument("${location}");
-		cmd.setSubstitutionMap(kvp);
+		File VIEWSHED = new File( bin, "r.viewshed");
+		if( !VIEWSHED.exists()){
+			throw new IllegalStateException("r.viewshed not found:"+VIEWSHED);
+		}
+		if( !VIEWSHED.canExecute()){
+			throw new IllegalStateException("r.viewshed not executable:"+VIEWSHED);
+		}
+		File output = new File( mapset, "viewshed.tif");
 		
+		CommandLine cmd = new CommandLine( VIEWSHED );
+		cmd.addArgument("input="+file.getName());
+		cmd.addArgument("output="+output.getName());
+		cmd.addArgument("coordinates=${x},${y}");	
+		// cmd.addArgument("${mapset}");
+		cmd.addArgument("--overwrite");
+		cmd.setSubstitutionMap(new KVP("mapset", mapset,"output",output,"x",x,"y",y));
+		LOGGER.info(cmd.toString());
+			
 		DefaultExecutor executor = new DefaultExecutor();
 		executor.setExitValue(0);
 		executor.setWatchdog(new ExecuteWatchdog(60000));		
 		executor.setStreamHandler(new PumpStreamHandler(System.out));		
-		executor.setWorkingDirectory(location);
+		executor.setWorkingDirectory(mapset);
 		
 		int exitValue = executor.execute(cmd,env);
 		
-		File viewshed = new File( location, "viewshed.tiff");
+		File viewshed = new File( location, "viewshed.tif");
 		if( !viewshed.exists() ){
-			throw new IOException("Generated viweshed.tiff not found");
+			throw new IOException("Generated viweshed.tif not found");
 		}
 		final GeoTiffFormat format = new GeoTiffFormat();
 		GeoTiffReader reader = format.getReader( viewshed );
@@ -247,24 +268,22 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 	/**
 	 * Define a GISBASE/LOCATION_NAME/PERMANENT for the provided dem.
 	 * 
-	 * @param operation Name used for the location on disk
-	 * @param dem File used to establish CRS and Bounds for the location
-	 * @return
+	 * The dem is staged in GISBASE/dem.tif and then moved to
+	 * GISBASE/LOCATION_NAME/PERMANENT/dem.tif
+	 * 
+	 * @param operation
+	 *            Name used for the location on disk
+	 * @param dem
+	 *            File used to establish CRS and Bounds for the location
+	 * @return Array of files consisting of {GISBASE, LOCATION, MAPSET, dem.tif}
 	 * @throws Exception
 	 */
 	static File[] location( String operation, GridCoverage2D dem ) throws Exception {
 		File geodb = new File(System.getProperty("user.home"),"grassdata");
-		File location = Files.createTempDirectory(geodb.toPath(),operation).toFile();		
-		String mapset = "PERMANENT";
-		File permanent = new File( location, mapset ); 
-		File file = new File( geodb, "dem.tiff");
-		
-		
-		KVP kvp = new KVP(
-				"geodb",geodb,
-				"location",location,
-				"mapset",permanent,
-				"file",file);
+		//File location = Files.createTempDirectory(geodb.toPath(),operation).toFile();
+		File location = new File( geodb, operation );
+		File mapset = new File( location, "PERMANENT" ); 
+		File file = new File( geodb, "dem.tif");
 		
 		final GeoTiffFormat format = new GeoTiffFormat();
 		GridCoverageWriter writer = format.getWriter(file);
@@ -276,11 +295,8 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 		cmd.addArgument("-c");
 		cmd.addArgument("${file}");
 		cmd.addArgument("-e");
-		cmd.addArgument("-text");
-		
-		cmd.addArgument("${mapset}");
-		cmd.setSubstitutionMap(kvp);
-		
+		cmd.addArgument("${location}");
+		cmd.setSubstitutionMap(new KVP("file", file, "location", location));		
 		LOGGER.info( cmd.toString() );
 		
 		DefaultExecutor executor = new DefaultExecutor();
@@ -289,13 +305,14 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 		executor.setWatchdog(watchdog);		
 		executor.setStreamHandler(new PumpStreamHandler(System.out));
 		int exitValue = executor.execute(cmd);
-
-		System.out.println("GRASS Enviornment:"+location);
 		
 		File origional = file;
-		file = new File(location, file.getName());
+		file = new File(mapset, file.getName());
 		Files.move(origional.toPath(),  file.toPath() );
 		
-		return new File[]{geodb,location,file};
+		// r.in.gdal input=~/grassdata/viewshed/PERMANENT/dem.tif output=dem --overwrite
+
+		
+		return new File[]{geodb,location,mapset,file};
 	}
 }
