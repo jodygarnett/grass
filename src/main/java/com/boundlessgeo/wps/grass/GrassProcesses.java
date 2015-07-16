@@ -156,6 +156,11 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 		
 		// stage dem file
 		File file = new File( geodb, "dem.tif");		
+		//The file must exist for FileImageOutputStreamExtImplSpi to create the output stream
+		if (!file.exists()) {
+		    file.getParentFile().mkdirs();
+		    file.createNewFile();
+		}
 		final GeoTiffFormat format = new GeoTiffFormat();
 		GridCoverageWriter writer = format.getWriter(file);
 		writer.write(dem, null);
