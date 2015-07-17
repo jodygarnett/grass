@@ -45,6 +45,7 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 	
 	private static final Logger LOGGER = Logging.getLogger("org.geoserver.wps.grass");
 	static String EXEC;
+	static String BIN;
 	final static Env SYSTEM;
 	private static final SecureRandom random = new SecureRandom();
 	
@@ -70,6 +71,7 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 				"grass", GrassProcesses.class);
 		
 		String grass = GeoServerExtensions.getProperty("GRASS");
+		String grass_mod = GeoServerExtensions.getProperty("GRASS_MODULES");
 		if (grass != null) {
 			LOGGER.info("defined GRASS="+grass);
 			EXEC = grass;
@@ -80,7 +82,11 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 			EXEC = "/Applications/GRASS-7.0.app/Contents/MacOS/grass70";
 			LOGGER.info("default GRASS="+EXEC);
 		} else if(SYSTEM == Env.WINDOWS){
-			EXEC = "C:\\GRASS64\\GRASS70.exe";
+		        if (new File("C:\\Program Files (x86)").exists()) {
+                            EXEC = "C:\\Program Files (x86)\\GRASS GIS 7.0.0\\grass70.bat";
+                        } else {
+                            EXEC = "C:\\Program Files\\GRASS GIS 7.0.0\\grass70.bat";
+                        }
 			LOGGER.info("default GRASS="+EXEC);
 		} else {
 			LOGGER.warning(
@@ -89,16 +95,47 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 			);
 			EXEC = null;
 		}
+		if (grass_mod != null) {
+                        LOGGER.info("defined GRASS_MODULES="+grass_mod);
+                        BIN = grass_mod;
+                } else if (SYSTEM == Env.LINUX){
+                        BIN = "/usr/lib/grass70/bin";
+                        LOGGER.info("default GRASS_MODULES="+BIN);
+                } else if (SYSTEM == Env.MAC){
+                        BIN = "/Applications/GRASS-7.0.app/Contents/MacOS/bin";
+                        LOGGER.info("default GRASS_MODULES="+BIN);
+                } else if(SYSTEM == Env.WINDOWS){
+                        if (new File("C:\\Program Files (x86)").exists()) {
+                            BIN = "C:\\Program Files (x86)\\GRASS GIS 7.0.0\\bin";
+                        } else {
+                            BIN = "C:\\Program Files\\GRASS GIS 7.0.0\\bin";
+                        }
+                        
+                        LOGGER.info("default GRASS_MODULES="+BIN);
+                } else {
+                        LOGGER.warning(
+                                "GRASS modules unavailable for '"+System.getProperty("os.name")+
+                                "'. Please use GRASS_MODULES environmental variable, context parameter or system property"
+                        );
+                        BIN = null;
+                }
 		if( EXEC != null ){
 			File exec = new File(EXEC);
 			if( !exec.exists()){
-				LOGGER.warning(EXEC+" does not exists");
+				LOGGER.warning(EXEC+" does not exist");
 				EXEC = null;
 			}
 			if( !exec.canExecute()){
 				LOGGER.warning(EXEC+" not executable");
 				EXEC = null;
 			}
+		}
+		if( BIN != null ){
+                    File exec = new File(BIN);
+                    if( !exec.exists()){
+                            LOGGER.warning(BIN+" does not exist");
+                            BIN = null;
+                    }
 		}
 	}
 	
@@ -254,8 +291,16 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 	}
 
 	private static File bin(String command) {
-		File bin = new File( new File(EXEC).getParentFile(), "bin");
-		File exec = new File(bin,command);
+	        File exec;
+	        if (SYSTEM == Env.WINDOWS) {
+	            exec = new File(new File(BIN),command+".bat");
+	            if (!exec.exists()) {
+	                exec = new File(new File(BIN),command+".exe");
+	            }
+	        } else {
+	            exec = new File(new File(BIN),command);
+	        }
+		
 		if( !exec.exists()){
 			throw new IllegalStateException(command+" not found:"+exec);
 		}
