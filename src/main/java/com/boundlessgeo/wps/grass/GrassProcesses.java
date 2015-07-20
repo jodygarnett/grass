@@ -187,9 +187,10 @@ public class GrassProcesses extends StaticMethodsProcessFactory<GrassProcesses> 
 			double y) throws Exception{
 		
 		String COMMAND = "viewshed";
-		File geodb = new File(System.getProperty("user.home"),"grassdata");		
+		//Stage files in a temporary location
+		File geodb = Files.createTempDirectory("grassdata").toFile();
+		geodb.deleteOnExit();
 		File location = new File( geodb, COMMAND + Long.toString(random.nextLong()) + "location");
-		//File location = new File( geodb, COMMAND );
 		
 		// stage dem file
 		File file = new File( geodb, "dem.tif");		
